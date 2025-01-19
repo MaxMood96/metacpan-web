@@ -1,12 +1,17 @@
 use strict;
 use warnings;
-use Test::More;
+use lib 't/lib';
+
 use MetaCPAN::Web::Test qw( app GET test_psgi tx );
+use Test::More;
 
 test_psgi app, sub {
     my $cb = shift;
 
     ok( my $res = $cb->( GET '/dist/DOESNTEXIST' ), 'GET /dist/DOESNTEXIST' );
+    is( $res->code, 404, 'code 404' );
+
+    ok( $res = $cb->( GET '/dist/$$$$' ), 'GET /dist/$$$$' );
     is( $res->code, 404, 'code 404' );
 
     ok( $res = $cb->( GET '/release/AUTHORDOESNTEXIST/DOESNTEXIST' ),
@@ -15,6 +20,15 @@ test_psgi app, sub {
 
     ok( $res = $cb->( GET '/release/PERLER/DOESNTEXIST' ),
         'GET /release/PERLER/DOESNTEXIST' );
+    is( $res->code, 404, 'code 404' );
+
+    ok( $res = $cb->( GET '/release/BRICAS/CPAN-Changes-0.21' ),
+        'GET /release/BRICAS/CPAN-Changes-0.21' );
+    is( $res->code, 200, 'code 200' );
+
+    # Testing missing author returns 404 not a 500
+    ok( $res = $cb->( GET '/release//CPAN-Changes-0.21' ),
+        'GET /release//CPAN-Changes-0.21' );
     is( $res->code, 404, 'code 404' );
 
     ok( $res = $cb->( GET '/dist/Moose' ), 'GET /dist/Moose' );

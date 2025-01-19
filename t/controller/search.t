@@ -1,8 +1,10 @@
 use strict;
 use warnings;
-use Test::More;
-use MetaCPAN::Web::Test qw( app GET test_psgi tx );
+use lib 't/lib';
+
 use Encode              qw( encode is_utf8 );
+use MetaCPAN::Web::Test qw( app GET test_psgi tx );
+use Test::More;
 
 my %xpath = (
     search_results => '*[contains-token(@class, "search-results")]',
@@ -57,7 +59,7 @@ test_psgi app, sub {
         );
     }
 
-    ok( $res = $cb->( GET $release), "GET $release" );
+    ok( $res = $cb->( GET $release ), "GET $release" );
     is( $res->code, 200, 'code 200' );
 
     ok( $res = $cb->( GET '/search?q=RJBS&lucky=1' ),

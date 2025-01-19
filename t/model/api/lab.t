@@ -1,8 +1,9 @@
 use strict;
 use warnings;
+use lib 't/lib';
 
-use Test::More;
 use MetaCPAN::Web ();
+use Test::More;
 
 my $model = MetaCPAN::Web->model('API::Lab');
 

@@ -2,16 +2,16 @@ package MetaCPAN::Web::Model::ReleaseInfo;
 
 use strict;
 use warnings;
-use MetaCPAN::Moose;
+use Moose;
 
 extends 'Catalyst::Model';
 
-use List::Util  qw( all );
-use Ref::Util   qw( is_hashref );
-use URI         ();
-use URI::Escape qw( uri_escape uri_unescape );
-use Future      ();
+use Future                                        ();
+use List::Util                                    qw( all );
 use MetaCPAN::Web::API::RequestInfo::Orchestrator ();
+use Ref::Util                                     qw( is_hashref );
+use URI                                           ();
+use URI::Escape qw( uri_escape uri_unescape );
 
 my %models = (
     _distribution => 'API::Distribution',
@@ -19,7 +19,6 @@ my %models = (
     _author       => 'API::Author',
     _contributors => 'API::Contributors',
     _changes      => 'API::Changes',
-    _rating       => 'API::Rating',
     _favorite     => 'API::Favorite',
     _permission   => 'API::Permission',
 );
@@ -78,7 +77,6 @@ sub _fetch {
             return (
                 [ favorites    => $self->_favorite->by_dist($dist) ],
                 [ plussers     => $self->_favorite->find_plussers($dist) ],
-                [ rating       => $self->_rating->get($dist) ],
                 [ versions     => $self->_release->versions($dist) ],
                 [ distribution => $self->_distribution->get($dist) ],
             );

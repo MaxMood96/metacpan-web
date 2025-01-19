@@ -7,19 +7,23 @@
 
 ## Become a sponsor
 
-We use <a href="https://opencollective.com/metacpan-core">OpenCollective</a> to manage donations. Please <a href="https://opencollective.com/metacpan-core">donate</a> - regular contributions are 
-ideal (to help us budget), but anything you or your company can contribute is appreciated.
+We use [OpenCollective](https://opencollective.com/metacpan-core) to manage
+donations. Please [donate](https://opencollective.com/metacpan-core) - regular
+contributions are ideal (to help us budget), but anything you or your company
+can contribute is appreciated.
 
 ## Where does the money go?
 
-As a small open source group of developers we have several things that cost money...
+As a small open source group of developers we have several things that cost
+money...
 
 - Running the servers
-- 3rd party system support (to help with the servers, if the open source team are not available)
+- 3rd party system support (to help with the servers, if the open source team
+  are not available)
 - Data storage (including backups)
 - Tools to help us work together better
 - Meta::Hack - getting together once a year or so to push development forward
-- Hosting other <a href="https://perltoolchainsummit.org/">Perl Toolchain projects</a>
+- Hosting other [Perl Toolchain projects](https://perltoolchainsummit.org/)
 
 ## Our current and previous big sponsors
 
@@ -301,15 +305,13 @@ As a small open source group of developers we have several things that cost mone
             account. It provides a simple yet powerful interface for managing
             email accounts, security, domains, databases, and more. cPanel was
             originally written (in Perl!) by Nick Koston in 1997. cPanel (the
-            company) now employees over 200 people, and Nick is their CEO.
-            They've been using Perl for nearly 20 years now, and have long
-            been supporters of Perl and its community. You may recognise some
-            of their developers who are CPAN authors: Todd Rinaldo (<a
-            target="_blank" rel="noopener nofollow"
+            company) now employs over 200 people. They've been using Perl
+            for nearly 20 years now, and have long been supporters of Perl and
+            its community. You may recognise some of their developers who are
+            CPAN authors: Todd Rinaldo (<a target="_blank" rel="noopener nofollow"
             href="https://metacpan.org/author/TODDR">TODDR</a>), Xan
             Hilmisdóttir (<a target="_blank" rel="noopener nofollow"
-            href="https://metacpan.org/author/XAN">XAN</a>), and others. Their
-            CEO, Nick, still develops in Perl today.
+            href="https://metacpan.org/author/XAN">XAN</a>), and others.
           </p>
         </td>
       </tr>
@@ -566,7 +568,7 @@ As a small open source group of developers we have several things that cost mone
       <tr>
         <td>
           <a target="_blank" rel="noopener nofollow" href="https://deriv.com/careers/">
-            <img src="/static/images/sponsors/deriv-horizontal-web-dark-100.jpeg" width="170">
+            <img src="/static/images/sponsors/deriv.svg" width="170">
           </a>
         </td>
         <td>
@@ -623,6 +625,27 @@ As a small open source group of developers we have several things that cost mone
           </p>
         </td>
       </tr>
+      <tr>
+        <td>
+          <a target="_blank" rel="noopener nofollow" href="https://route4me.com/">
+            <img src="/static/images/sponsors/route4me.png" width="170">
+          </a>
+        </td>
+        <td>
+          <p>
+            Route4Me is a powerful route planning and optimization software
+            designed to streamline last-mile delivery and service operations.
+            It automates and integrates crucial workflows for route planners,
+            dispatchers, drivers, and managers, enhancing efficiency and
+            customer satisfaction. With features like real-time GPS tracking,
+            mobile apps, and seamless integration with other platforms,
+            Route4Me helps businesses save time, reduce fuel costs, and improve
+            overall operational efficiency. The software supports dynamic
+            routing and recurring route planning, making it adaptable for
+            various industries and business needs.
+          </p>
+        </td>
+      </tr>
     </table>
   </div>
   <div class="sponsor-footer">
@@ -631,4 +654,3 @@ As a small open source group of developers we have several things that cost mone
   </div>
 </div>
 %%  }
-

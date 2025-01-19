@@ -5,7 +5,9 @@ BEGIN { extends 'MetaCPAN::Web::Controller' }
 
 sub add : Local : Args(0) {
     my ( $self, $c ) = @_;
-    $c->stash( { current_view => 'JSON' } );
+    my $json = $c->req->accepts('application/json');
+    $c->stash( { current_view => 'JSON' } )
+        if $json;
     $c->detach('/forbidden') unless ( $c->req->method eq 'POST' );
     my $user = $c->user;
     $c->detach('/forbidden') unless $user;
@@ -19,21 +21,18 @@ sub add : Local : Args(0) {
         $res = $user->add_favorite($data)->get;
     }
 
-    # We need to purge if the rating has changes until the fav count
-    # is moved from server to client side
-    $c->purge_author_key( $data->{author} )     if $data->{author};
-    $c->purge_dist_key( $data->{distribution} ) if $data->{distribution};
-
-    if ( $c->req->looks_like_browser ) {
-        $c->res->redirect(
-              $res->{error}
-            ? $c->req->referer
-            : $c->uri_for('/account/turing/index')
-        );
+    if ($json) {
+        if ( $res->{error} ) {
+            $c->res->code(400);
+            $c->stash->{json}{success} = \0;
+            $c->stash->{json}{error}   = $res->{error};
+        }
+        else {
+            $c->stash->{json}{success} = \1;
+        }
     }
     else {
-        $c->res->code(400) if ( $res->{error} );
-        $c->stash->{json}{success} = $res->{error} ? \0 : \1;
+        $c->res->redirect( $c->req->referer );
     }
 }
 

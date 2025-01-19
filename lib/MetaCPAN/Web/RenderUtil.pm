@@ -4,14 +4,32 @@ use strict;
 use warnings;
 use Exporter qw(import);
 
+use Carp           qw( croak );
+use Digest::MD5    ();
 use HTML::Escape   qw( escape_html );
 use HTML::Restrict ();
 use URI            ();
-use Digest::MD5    ();
+use CommonMark     qw(
+    EVENT_ENTER
+    EVENT_EXIT
+    NODE_CODE
+    NODE_CODE_BLOCK
+    NODE_DOCUMENT
+    NODE_HEADER
+    NODE_HRULE
+    NODE_HTML
+    NODE_INLINE_HTML
+    NODE_LINEBREAK
+    NODE_SOFTBREAK
+    NODE_TEXT
+    OPT_UNSAFE
+);
 
 our @EXPORT_OK = qw(
     filter_html
     gravatar_image
+    render_markdown
+    split_index
 );
 
 sub filter_html {
@@ -41,6 +59,7 @@ sub filter_html {
             i       => [],
             li      => ['id'],
             ol      => [],
+            nav     => [],
             p       => [],
             pre     => [ {
                 class        => qr/^line-numbers$/,
@@ -59,7 +78,7 @@ sub filter_html {
             td     => [qw( colspan rowspan )],
             tr     => [],
             u      => [],
-            ul     => [ { id => qr/^index$/ } ],
+            ul     => [],
 
             #
             # SVG tags.
@@ -144,6 +163,90 @@ sub gravatar_image {
     my $grav_id = Digest::MD5::md5_hex( lc $email );
     return sprintf 'https://www.gravatar.com/avatar/%s?d=identicon&s=%s',
         $grav_id, $size // 80;
+}
+
+sub split_index {
+    my ($html) = @_;
+
+    # this will hopefully be done by the API in the future
+    $html =~ s{\A<ul id="index">(.*?^</ul>\n?)}{<nav><ul>$1</nav>}ms;
+
+    # both of these regexes are kind of ugly, but we know the content produced
+    # by the API, so it should still work fine.
+    $html =~ s{\A<nav>(.*?)</nav>\n*}{}s;
+    my $pod_index = $1;
+    return ( $pod_index, $html );
+}
+
+my @is_leaf;
+$is_leaf[$_] = 1
+    for (
+    NODE_HTML,      NODE_HRULE,     NODE_CODE_BLOCK, NODE_TEXT,
+    NODE_SOFTBREAK, NODE_LINEBREAK, NODE_CODE,       NODE_INLINE_HTML,
+    );
+
+sub render_markdown {
+    my ( $markdown, %opts ) = @_;
+
+    my $render_opts = 0;
+    if ( delete $opts{unsafe} // 1 ) {
+        $render_opts |= OPT_UNSAFE;
+    }
+
+    if (%opts) {
+        croak "Unsupported options: " . join( ', ', sort keys %opts );
+    }
+
+    my $doc = CommonMark->parse_document($markdown);
+
+    my ( $html, $header_content, %seen_header );
+
+    my $iter = $doc->iterator;
+    while ( my ( $ev_type, $node ) = $iter->next ) {
+        my $node_type = $node->get_type;
+
+        if ( $node_type == NODE_DOCUMENT ) {
+            next;
+        }
+
+        if ( $node_type == NODE_HEADER ) {
+            if ( $ev_type == EVENT_ENTER ) {
+                $header_content = '';
+            }
+            if ( $ev_type == EVENT_EXIT ) {
+                $header_content =~ s{(?:-(\d+))?$}{'-' . (($1 // 1) + 1)}e
+                    while $seen_header{$header_content}++;
+
+                my $header_html = $node->render_html($render_opts);
+                $header_html
+                    =~ s/^<h[0-9]+\b\K/' id="'.escape_html($header_content).'"'/e;
+                $html .= $header_html;
+
+                undef $header_content;
+            }
+        }
+        elsif ($ev_type == EVENT_ENTER
+            && $node->parent->get_type == NODE_DOCUMENT )
+        {
+            $html .= $node->render_html($render_opts);
+        }
+
+        if ( defined $header_content ) {
+            if ( $is_leaf[$node_type] ) {
+                my $content = lc( $node->get_literal );
+                $content =~ s/\A\s+//;
+                $content =~ s/\s+\z//;
+                $content =~ s/\s+/-/g;
+
+                if ( length $content ) {
+                    $header_content .= '-' if length $header_content;
+                    $header_content .= $content;
+                }
+            }
+        }
+    }
+
+    return $html;
 }
 
 1;

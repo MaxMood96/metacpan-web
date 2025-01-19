@@ -7,30 +7,22 @@
     td {
         padding: 5px;
     }
-    .valid {
-        background-color: #900;
-        padding: 5px;
-        float: right;
-        font-size: 1.2em;
-        color: #fff;
-        font-weight: bold;
-        display: none;
-    }
 
-    .invalid {
-        display: inline-block;
-    }
-    // To fix the author-pic float-right crap..
-    .form-horizontal {
-        .control-group:after {
-            clear: left;
-        }
+    textarea.invalid {
+        background:
+            url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='18px' width='74px'><text text-anchor='end' x='74px' y='18' fill='white' font-size='18' font-weight='bold' font-family='&quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif'>invalid</text></svg>")
+                bottom 0.2em right 0.2em / auto 1em no-repeat,
+            linear-gradient(
+                to bottom right,
+                rgba(153, 0, 0, 0) 90%,
+                rgb(153, 0, 0) 95%
+            );
     }
 
     // to fix repeating fields like email etc
 
     .repeatable .control-group {
-        .controls:nth-child(n+3) {
+        .controls:nth-child(n + 3) {
             margin-top: 3px;
         }
     }
@@ -71,7 +63,7 @@
                     left: 20px;
                 }
                 &.profile-bitbucket .control-label {
-                    background-image: url(/static/images/profile/bitbucket.png)
+                    background-image: url(/static/images/profile/bitbucket.png);
                 }
                 &.profile-blinklist .control-label {
                     background-image: url(/static/images/profile/blinklist.png);
@@ -193,9 +185,6 @@
                 &.profile-posterous .control-label {
                     background-image: url(/static/images/profile/posterous.png);
                 }
-                &.profile-prepan .control-label {
-                    background-image: url(/static/images/profile/prepan.png);
-                }
                 &.profile-reddit .control-label {
                     background-image: url(/static/images/profile/reddit.png);
                 }
@@ -250,7 +239,6 @@
                 &.profile-youtube .control-label {
                     background-image: url(/static/images/profile/youtube.png);
                 }
-
             }
         }
     }
@@ -269,7 +257,9 @@
         /* We hide the remove text on mobile, to make the button smaller */
         .profiles {
             .remove {
-                span { display: none; }
+                span {
+                    display: none;
+                }
             }
 
             .control-group {
@@ -287,5 +277,16 @@
         .pull-right {
             float: none !important;
         }
+    }
+}
+@media (min-width: 480px) {
+    .profile-form {
+        .form-horizontal;
+    }
+}
+
+.profile-form {
+    textarea[name="extra"] {
+        font-family: @font-family-monospace;
     }
 }

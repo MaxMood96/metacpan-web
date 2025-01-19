@@ -1,9 +1,10 @@
-# vim: set ts=2 sts=2 sw=2 expandtab smarttab:
 use strict;
 use warnings;
-use Test::More;
-use MetaCPAN::Web::Test qw( override_api_response );
+use lib 't/lib';
+
 use Encode              qw( encode is_utf8 );
+use MetaCPAN::Web::Test qw( override_api_response );
+use Test::More;
 
 my ( $res_body, $content_type ) = ( q{}, 'text/plain' );
 

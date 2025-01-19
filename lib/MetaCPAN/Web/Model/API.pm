@@ -5,19 +5,19 @@ extends 'Catalyst::Model';
 
 use namespace::autoclean;
 
-use Encode           ();
 use Cpanel::JSON::XS qw( decode_json encode_json );
+use Encode           ();
 use IO::Async::Loop  ();
 use IO::Async::SSL;    ## no perlimports
-use IO::Socket::SSL       qw( SSL_VERIFY_PEER );
-use Net::Async::HTTP      ();
-use URI                   ();
-use MetaCPAN::Web::Types  qw( Uri );
-use Try::Tiny             qw( catch try );
 use HTTP::Request         ();
 use HTTP::Request::Common ();
-use URI::Escape           qw( uri_escape );
+use IO::Socket::SSL       qw( SSL_VERIFY_PEER );
+use MetaCPAN::Web::Types  qw( Uri );
+use Net::Async::HTTP      ();
 use Ref::Util             qw( is_arrayref );
+use Try::Tiny             qw( catch try );
+use URI                   ();
+use URI::Escape           qw( uri_escape );
 
 my $loop;
 
@@ -117,13 +117,14 @@ sub request {
                 'Content'      => encode_json($search),
                 )
             : $method eq 'POST' && $params ? (
-                'Content_Type' => 'multipart/form-data',
+                'Content-Type' => 'multipart/form-data',
                 'Content'      => $params,
                 )
             : ()
         ),
         ( $current_url ? ( 'Referer' => $current_url->as_string )   : () ),
         ( $request_id  ? ( 'X-MetaCPAN-Request-ID' => $request_id ) : () ),
+        'Accept' => 'application/json, */*',
     );
 
     my $req_p = $self->client->do_request( request => $request );

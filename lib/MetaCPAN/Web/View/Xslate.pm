@@ -2,6 +2,7 @@ package MetaCPAN::Web::View::Xslate;
 use Moose;
 extends qw(Catalyst::View::Xslate);
 use File::Path           ();
+use File::Temp           ();
 use MetaCPAN::Web::Types qw( AbsPath );
 
 has '+syntax'      => ( default => 'Metakolon' );
@@ -9,8 +10,15 @@ has '+encode_body' => ( default => 0 );
 has '+preload'     => ( default => 0 );
 has '+cache'       => ( default => 0 );
 has '+cache_dir' => (
-    isa    => AbsPath,
-    coerce => 1,
+    isa     => AbsPath,
+    coerce  => 1,
+    default => sub {
+        File::Temp::tempdir(
+            TEMPLATE => 'metacpan-web-templates-XXXXXX',
+            CLEANUP  => 1,
+            TMPDIR   => 1,
+        );
+    },
 );
 has '+module' => (
     default =>
@@ -54,6 +62,7 @@ has '+expose_methods' => (
     default =>
         sub
     { [ qw(
+        abs_url
         page_url
     ) ] },
 );
@@ -62,6 +71,13 @@ sub page_url {
     my ( $self, $c, @args ) = @_;
     my $req = $c->request;
     my $uri = @args ? $req->uri_with(@args) : $req->uri;
+    $uri->as_string;
+}
+
+sub abs_url {
+    my ( $self, $c, $url, $base ) = @_;
+    $base ||= $c->request->uri;
+    my $uri = URI->new_abs( $url, $base );
     $uri->as_string;
 }
 
@@ -74,7 +90,7 @@ around render => sub {
 
     $vars->{api_public}  = $self->api_public;
     $vars->{source_host} = $self->source_host;
-    $vars->{assets}      = $req->env->{'psgix.assets'} || [];
+    $vars->{assets}      = $req->env->{'metacpan.assets'} || [];
     $vars->{current}     = {
         $c->action->reverse    => 1,
         $c->request->uri->path => 1,

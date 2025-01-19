@@ -7,7 +7,7 @@
         <link href="[% $css %]" rel="stylesheet" type="text/css">
         %%  }
         %%  for $assets.grep(rx('\.js$')) -> $js {
-        <script src="[% $js %]" type="text/javascript" defer></script>
+        <script src="[% $js %]" type="module"></script>
         %%  }
         %%  if $rss {
         <link rel="alternate" type="application/rss+xml" title="[% $rss_title || 'RSS' %]" href="[% $rss %]" />
@@ -22,25 +22,8 @@
         <link rel="shortcut icon" href="/static/icons/favicon.ico">
         <link rel="apple-touch-icon" sizes="152x152" href="/static/icons/apple-touch-icon.png">
         <link rel="search" href="/static/opensearch.xml" type="application/opensearchdescription+xml" title="MetaCPAN">
-        <script>
-          (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-          m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-          })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-
-          (function(skey, ga_id){
-            ga('create', ga_id, {
-              siteSpeedSampleRate : 100,
-              storage             : 'none',
-              clientId            : localStorage.getItem(skey)
-            });
-            ga(function(tracker) {
-              localStorage.setItem(skey, tracker.get('clientId'));
-            });
-            ga('send', 'pageview');
-          })('ga:clientId', 'UA-27829474-1');
-        </script>
-        %%  block meta_card -> {}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-E82Q2V8LVD"></script>
+        %%  block opengraph -> { }
     </head>
     <body>
         <nav class="navbar navbar-default" role="navigation">
@@ -87,12 +70,14 @@
                 %%  block sidebar_toggle_button -> {
                     <li class="icon-slidepanel visible-xs visible-sm">
                       <button data-toggle="slidepanel" data-target=".slidepanel">
-                        <i class="fa fa-bars button-fa-icon"></i>
+                        <span class="button-fa-icon">
+                          <i class="fa fa-bars slidepanel-open"></i>
+                          <i class="fa fa-times slidepanel-close"></i>
+                        </span>
                       </button>
                     </li>
                 %%  }
-                <form action="/account/logout" method="POST" id="metacpan-logout"></form>
-                <li class="dropdown logged_in" style="display: none;">
+                <li class="dropdown login-dropdown show-logged-in">
                     <button type="button" class="dropdown-toggle" data-toggle="dropdown">
                       <i class="fa fa-user button-fa-icon logged-in-icon" aria-hidden="true"></i>
                       <i class="fas fa-chevron-down"></i>
@@ -102,15 +87,15 @@
                         <li><a href="/account/profile">Profile</a></li>
                         <li><a href="/account/favorite/list">Favorites</a></li>
                         <li>
-                            <a href="#" type="button" onclick="$('#metacpan-logout').submit(); return false">
+                            <a href="#" type="button" class="logout-button">
                               Logout
                             </a>
                         </li>
                     </ul>
                 </li>
-                <li class="dropdown logged_out" style="display: none;">
+                <li class="dropdown login-dropdown show-logged-out">
                     <button type="button" class="dropdown-toggle" data-toggle="dropdown">
-                      <i class="fa fa-user button-fa-icon" aria-hidden="true"></i>
+                      <i class="fa fa-user button-fa-icon avatar-placeholder" aria-hidden="true"></i>
                       <i class="fas fa-chevron-down"></i>
                     </button>
                     <ul class="dropdown-menu">
@@ -124,7 +109,7 @@
                         %%  }
                     </ul>
                 </li>
-                <li class="dropdown logged_placeholder">
+                <li class="dropdown login-dropdown hide-logged-in hide-logged-out">
                     <button>
                       <i class="fa fa-user button-fa-icon" aria-hidden="true"></i>
                     </button>
@@ -132,11 +117,8 @@
             </ul>
         </nav>
         <div class="page-content [% block page_content_class -> { } %]">
-          <!--
           <div class="top-notify-banner">
-            <i class="fas fa-info-circle"></i>
           </div>
-          -->
           <nav class="sidebar">
             %%  block left_nav -> {
             <div class="slidepanel">
@@ -167,8 +149,8 @@
               <a class="footer-social-link" href="https://github.com/metacpan">
                 <i class="fab fa-github-square"></i>
               </a>
-              <a class="footer-social-link" href="https://twitter.com/metacpan">
-                <i class="fab fa-twitter-square"></i>
+              <a class="footer-social-link" href="https://fosstodon.org/@metacpan">
+                <i class="fab fa-mastodon"></i>
               </a>
             </div>
             <div class="footer-links">
@@ -185,7 +167,7 @@
                   <a href="/recent">Recent</a>
               </div>
               <div class="footer-link">
-                  <a href="about/faq">FAQ</a>
+                  <a href="/about/faq">FAQ</a>
               </div>
               <div class="footer-link">
                   <a href="/tools">Tools</a>
@@ -205,7 +187,7 @@
                 <img class="footer-sponsor-liquidweb" src="/static/images/sponsors/liquidweb_logo.png" alt="liquidweb logo">
               </a>
               <a class="footer-sponsor-link" target="_blank" href="https://deriv.com/careers/" rel="noopener">
-                <img class="footer-sponsor-deriv" src="/static/images/sponsors/deriv-horizontal-web-dark-100-removebg.png" alt="Deriv logo">
+                <img class="footer-sponsor-deriv" src="/static/images/sponsors/deriv.svg" alt="Deriv logo">
               </a>
               <a class="footer-sponsor-link" target="_blank" href="https://geocode.xyz" rel="noopener">
                 <img class="footer-sponsor-geocode" src="/static/images/sponsors/geocodelogo.svg" alt="Geocode logo">
@@ -215,6 +197,14 @@
               </a>
               <a class="footer-sponsor-link" target="_blank" href="https://opencagedata.com" rel="noopener">
                 <img class="footer-sponsor-opencage" src="/static/images/sponsors/open-cage.svg" alt="OpenCage logo">
+              </a>
+              <!-- Added 2024-07-22 -->
+              <a class="footer-sponsor-link" target="_blank" href="https://www.elastic.co/" rel="noopener">
+                <img class="footer-sponsor-elastic" src="/static/images/sponsors/elastic.svg" alt="Elastic logo">
+              </a>
+              <!-- Added 2024-07-22 -->
+              <a class="footer-sponsor-link" target="_blank" href="https://route4me.com/" rel="noopener">
+                <img class="footer-sponsor-route4me" src="/static/images/sponsors/route4me.png" alt="Route4Me logo">
               </a>
             </div>
           </div>

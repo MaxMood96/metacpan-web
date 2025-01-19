@@ -1,7 +1,5 @@
-window.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.dropdown select').forEach( el => {
-        el.addEventListener('change', e => {
-            document.location.href = e.target.value;
-        });
+for (const el of document.querySelectorAll('.dropdown select')) {
+    el.addEventListener('change', () => {
+        document.location.href = el.value;
     });
-});
+}

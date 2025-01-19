@@ -5,7 +5,7 @@
 %%    canonical => $canonical || '/dist/' ~ $release.distribution,
 %%    meta_description => $meta_description || $release.abstract,
 %%  }
-%%  override meta_card -> { include inc::twitter::release }
+%%  override opengraph -> { include inc::opengraph::release }
 %%  override breadcrumbs -> {
 <div class="breadcrumbs">
   <span>
@@ -51,7 +51,8 @@
     %%    : '/dist/' ~ $release.distribution;
     <li class="nav-header no-margin-top">
       <div class="ttip" data-toggle="tooltip" data-placement="bottom" title="The date that this version of [% $release.distribution %] was released.">
-      <span class="relatize">[% datetime($release.date).to_http %]</span>
+        <span class="relatize">[% datetime($release.date).to_http %]</span>
+      </div>
     </li>
     %%  include inc::release_status { maturity => $release.maturity }
     %%  block left_nav_lead -> {

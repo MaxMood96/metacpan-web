@@ -1,479 +1,93 @@
-/* jshint white: true, lastsemic: true */
+'use strict';
 
-// Store global data in this object
-var MetaCPAN = {};
+const relatizeDate = require('./relatize_date.js');
+const storage = require('./storage.js');
+const Mousetrap = require('mousetrap');
+const {
+    formatTOC,
+    createAnchors
+} = require('./document-ui.mjs');
 
-// provide localStorage shim to work around https://bugzilla.mozilla.org/show_bug.cgi?id=748620
-try {
-    MetaCPAN.storage = window.localStorage;
-} catch (e) {}
-if (!MetaCPAN.storage) {
-    MetaCPAN.storage = {
-        getItem: function(k) {
-            return this["_" + k];
-        },
-        setItem: function(k, v) {
-            return this["_" + k] = v;
-        },
-    };
-}
-
-$.extend({
-    getUrlVars: function() {
-        var vars = {},
-            hash;
-        var indexOfQ = window.location.href.indexOf('?');
-        if (indexOfQ == -1) return vars;
-        var hashes = window.location.href.slice(indexOfQ + 1).split('&');
-        $.each(hashes, function(idx, hash) {
-            var kv = hash.split('=');
-            vars[kv[0]] = decodeURIComponent(kv[1]);
-        });
-        return vars;
-    },
-    getUrlVar: function(name) {
-        return $.getUrlVars()[name];
-    }
-});
-
-function togglePanel(side, visible) {
-    var elements = $('#metacpan_' + side + '-panel-toggle').add($('#metacpan_' + side + '-panel'));
-    var className = 'panel-hide';
-    if (typeof visible == "undefined") {
-        visible = elements.first().hasClass(className);
-    }
-    if (visible) {
-        elements.removeClass(className);
-    } else {
-        elements.addClass(className);
-    }
-    MetaCPAN.storage.setItem("hide_" + side + "_panel", visible ? 0 : 1);
-    return false;
-}
-
-function toggleTOC() {
-    var container = $('#index-container');
-    if (container.length == 0) return false;
-    var visible = !container.hasClass('hide-index');
-    var index = $('#index');
-    var newHeight = 0;
-    if (!visible) {
-        newHeight = index.get(0).scrollHeight;
-    }
-    index.animate({
-        height: newHeight
-    }, {
-        duration: 200,
-        complete: function() {
-            if (newHeight > 0) {
-                index.css({
-                    height: 'auto'
-                });
-            }
-        }
-    });
-    MetaCPAN.storage.setItem('hideTOC', (visible ? 1 : 0));
-    container.toggleClass('hide-index');
-    return false;
-}
+const jQuery = require('jquery');
+require('bootstrap/js/dropdown.js');
+require('bootstrap/js/modal.js');
+require('bootstrap/js/tooltip.js');
 
 function setFavTitle(button) {
-    button.attr('title', button.hasClass('active') ? 'Remove from favorites' : 'Add to favorites');
-    return;
+    button.setAttribute('title', button.classList.contains('active') ? 'Remove from favorites' : 'Add to favorites');
 }
 
-$(document).ready(function() {
-
-    // User customisations
-    processUserData();
-
-    $(".ttip").tooltip();
-
-    $('.keyboard-shortcuts').each(function() {
-        $(this).click(function(event) {
-            $('#metacpan_keyboard-shortcuts').modal();
-            event.preventDefault();
-        })
-    });
-
-    // Global keyboard shortcuts
-    Mousetrap.bind('?', function() {
-        $('#metacpan_keyboard-shortcuts').modal();
-    });
-    Mousetrap.bind('s', function(e) {
-        $('#metacpan_search-input').focus();
-        e.preventDefault();
-    });
-
-    // install a default handler for 'g s' for non pod pages
-    Mousetrap.bind('g s', function(e) {});
-
-    $('a[data-keyboard-shortcut]').each(function(index, element) {
-        Mousetrap.bind($(element).data('keyboard-shortcut'), function() {
-            window.location = $(element).attr('href');
-        });
-    });
-
-    $('table.tablesorter').each(function() {
-        var table = $(this);
-
-        var cfg = {
-            textExtraction: function(node) {
-                var $node = $(node);
-                var sort = $node.attr("sort");
-                if (!sort) return $node.text();
-                if ($node.hasClass("date")) {
-                    return (new Date(sort)).getTime();
-                } else {
-                    return sort;
-                }
-            },
-            headers: {}
-        };
-
-        var sortable = [];
-        table.find('thead th').each(function(i, el) {
-            var header = {};
-            if ($(el).hasClass('no-sort')) {
-                header.sorter = false;
-            } else {
-                sortable.push(i);
-            }
-            cfg.headers[i] = header;
-        });
-
-        var sortid;
-        if (table.attr('id')) {
-            var storageid = table.attr('id').replace(/^metacpan_/, '');
-            sortid = MetaCPAN.storage.getItem("tablesorter:" + storageid);
-        }
-        if (!sortid && table.attr('data-default-sort')) {
-            sortid = table.attr('data-default-sort');
-        }
-        if (!sortid) {
-            var match = /[?&]sort=\[\[([0-9,]+)\]\]/.exec(window.location.search);
-            if (match) {
-                sortid = decodeURIComponent(match[1]);
-            } else {
-                sortid = '0,0';
-            }
-        }
-        try {
-            sortid = JSON.parse('[' + sortid + ']');
-        } catch (e) {
-            sortid = [0, 0];
-        }
-
-        var sortCol;
-        var sortHeader = cfg.headers[sortid[0]];
-        if (typeof sortHeader === 'undefined') {
-            sortLCol = [sortable[0], 0];
-        } else if (sortHeader.sorter == false) {
-            sortCol = [sortable[0], 0];
-        } else {
-            sortCol = sortid;
-        }
-        cfg.sortList = [sortCol];
-
-        table.tablesorter(cfg);
-    });
-
-    $('.tablesorter.remote th.header').each(function() {
-        $(this).unbind('click');
-        $(this).click(function(event) {
-            var $cell = $(this);
-            var params = $.getUrlVars();
-            params.sort = '[[' + this.column + ',' + this.count++ % 2 + ']]';
-            var query = $.param(params);
-            var url = window.location.href.replace(window.location.search, '');
-            window.location.href = url + '?' + query;
-        });
-    });
-
-    $('.relatize').relatizeDate();
-
-    // Autocomplete issues:
-    // #345/#396 Up/down keys should put selected value in text box for further editing.
-    // #441 Allow more specific queries to send ("Ty", "Type::").
-    // #744/#993 Don't select things if the mouse pointer happens to be over the dropdown when it appears.
-    // Please don't steal ctrl-pg up/down.
-    var search_input = $("#metacpan_search-input");
-    var ac_width = search_input.outerWidth();
-
-    search_input.autocomplete({
-        serviceUrl: '/search/autocomplete',
-        // Wait for more typing rather than firing at every keystroke.
-        deferRequestBy: 150,
-        // If the autocomplete fires with a single colon ("type:") it will get no results
-        // and anything else typed after that will never trigger another query.
-        // Set 'preventBadQueries:false' to keep trying.
-        preventBadQueries: false,
-        dataType: 'json',
-        lookupLitmit: 20,
-        paramName: 'q',
-        autoSelectFirst: false,
-        // This simply caches the results of a previous search by url (so no reason not to).
-        noCache: false,
-        triggerSelectOnValidInput: false,
-        maxHeight: 180,
-        width: ac_width,
-        onSelect: function(suggestion) {
-            if (suggestion.data.type == 'module') {
-                document.location.href = '/pod/' + suggestion.data.module;
-            } else if (suggestion.data.type == 'author') {
-                document.location.href = '/author/' + suggestion.data.id;
-            }
-        }
-    });
-    var ac = search_input.autocomplete();
-    var formatResult = ac.options.formatResult;
-    ac.options.formatResult = function(suggestion, currentValue) {
-        var out = formatResult(suggestion, currentValue);
-        if (suggestion.data.type == 'author') {
-            return "<span class=\"suggest-author-label\">Author:</span> " + out;
-        }
-        return out;
-    };
-
-
-    // Disable the built-in hover events to work around the issue that
-    // if the mouse pointer is over the box before it appears the event may fire erroneously.
-    // Besides, does anybody really expect an item to be selected just by
-    // hovering over it?  Seems unintuitive to me.  I expect anyone would either
-    // click or hit a key to actually pick an item, and who's going to hover to
-    // the item they want and then instead of just clicking hit tab/enter?
-    $('.autocomplete-suggestions').off('mouseover.autocomplete');
-    $('.autocomplete-suggestions').off('mouseout.autocomplete');
-
-    var items = $('.ellipsis');
-    for (var i = 0; i < items.length; i++) {
-        var element = items[i];
-        var text = element.textContent;
-
-        // try to find a reasonable place to cut to allow mid-abbreviation.
-        // we want to cut "near" the middle, but prefer on a boundary.
-        var cut = Math.floor(text.length / 5 * 3);
-        var start_text = text.substr(0, cut);
-        var end_text = text.substr(cut);
-        var res = start_text.match(/^(.*[- :])(.*?)$/);
-        if (res && res[1].length > text.length / 4) {
-            start_text = res[1];
-            end_text = res[2] + end_text;
-        }
-
-        var start = document.createElement('span');
-        start.appendChild(document.createTextNode(start_text));
-        var end = document.createElement('span');
-        end.appendChild(document.createTextNode(end_text));
-        $(element).empty();
-        element.appendChild(end);
-        start.style.maxWidth = 'calc(100% - ' + end.clientWidth + 'px)';
-        element.insertBefore(start, end);
+async function processUserData() {
+    let user_data;
+    try {
+        user_data = await fetch('/account/login_status').then(res => res.json());
+    }
+    catch {
+        document.body.classList.remove('logged-in');
+        document.body.classList.add('logged-out');
+        return;
+    }
+    if (!user_data.logged_in) {
+        document.body.classList.remove('logged-in');
+        document.body.classList.add('logged-out');
+        return;
     }
 
-    function create_anchors(top) {
-        top.find('h1,h2,h3,h4,h5,h6,dt').each(function() {
-            if (this.id) {
-                $(document.createElement('a')).attr('href', '#' + this.id).addClass('anchor').append(
-                    $(document.createElement('span')).addClass('fa fa-bookmark black')
-                ).prependTo(this);
-            }
+    document.body.classList.add('logged-in');
+    document.body.classList.remove('logged-out');
+
+    if (user_data.avatar) {
+        const base_av = format_string(user_data.avatar, {
+            size: 35
         });
-    }
-    create_anchors($('.anchors'));
-
-    $('table.tablesorter th.header').on('click', function() {
-        tableid = $(this).parents().eq(2).attr('id');
-        var storageid = tableid.replace(/^metacpan_/, '');
-        setTimeout(function() {
-            var sortParam = $.getUrlVar('sort');
-            if (sortParam != null) {
-                sortParam = sortParam.slice(2, sortParam.length - 2);
-                MetaCPAN.storage.setItem("tablesorter:" + storageid, sortParam);
-            }
-        }, 1000);
-    });
-
-    setFavTitle($('.breadcrumbs .favorite'));
-
-    $('.dropdown-toggle').dropdown();
-
-    function format_index(index) {
-        index.wrap('<div id="index-container" class="pull-right"><div class="index-border"></div></div>');
-        var container = index.parent().parent();
-
-        var index_hidden = MetaCPAN.storage.getItem('hideTOC') == 1;
-        index.before(
-            '<div class="index-header"><b>Contents</b>' + ' [ <button class="btn-link toggle-index"><span class="toggle-show">show</span><span class="toggle-hide">hide</span></button> ] </div>');
-
-        $('.toggle-index').on('click', function(e) {
-            e.preventDefault();
-            toggleTOC();
+        const double_av = format_string(user_data.avatar, {
+            size: 70
         });
-        if (index_hidden) {
-            container.addClass("hide-index");
-        }
-    }
-    var index = $("#index");
-    if (index.length) {
-        format_index(index);
-    }
 
-    $('a[href*="/search?"]').on('click', function() {
-        var url = $(this).attr('href');
-        var result = /size=(\d+)/.exec(url);
-        if (result && result[1]) {
-            MetaCPAN.storage.setItem('search_size', result[1]);
-        }
-    });
-    var size = MetaCPAN.storage.getItem('search_size');
-    if (size) {
-        $('#metacpan_search-size').val(size);
+        const avatar = document.createElement('img');
+        avatar.classList.add('logged-in-avatar');
+        avatar.src = base_av;
+        avatar.srcset = `${base_av}, ${double_av} 2x`;
+        avatar.crossorigin = 'anonymous';
+        document.querySelector('.logged-in-icon').replaceWith(avatar);
     }
 
-    // TODO use a more specific locator for /author/PAUSID/release ?
-    set_page_size('a[href*="/releases"]', 'releases_page_size');
-    set_page_size('a[href*="/recent"]', 'recent_page_size');
-    set_page_size('a[href*="/requires"]', 'requires_page_size');
+    // process users current favs
+    for (const fav of user_data.faves) {
+        const distribution = fav.distribution;
 
-    var changes = $('#metacpan_last-changes');
-    var changes_inner = $('#metacpan_last-changes-container');
-    var changes_toggle = $("#metacpan_last-changes-toggle");
-    changes.addClass(['collapsable', 'collapsed']);
-    var changes_content_height = Math.round(changes_inner.prop('scrollHeight'));
-    var changes_ui_height = Math.round(changes_inner.height() + changes_toggle.height());
-    if (changes_content_height <= changes_ui_height) {
-        changes.removeClass(['collapsable', 'collapsed']);
+        // On the page... make it deltable and styled as 'active'
+        const fav_display = document.querySelector(`#${distribution}-fav`);
+
+        if (fav_display) {
+            fav_display.querySelector('input[name="remove"]').value = 1;
+            var button = fav_display.querySelector('button');
+            button.classList.add('active');
+            setFavTitle(button);
+        }
     }
-
-    var pod2html_form = $('#metacpan-pod-renderer-form');
-    var pod2html_text = $('[name="pod"]', pod2html_form);
-    var pod2html_update = function(pod) {
-        if (!pod) {
-            pod = pod2html_text.get(0).value;
-        }
-        var submit = pod2html_form.find('input[type="submit"]');
-        submit.attr("disabled", "disabled");
-        var rendered = $('#metacpan-pod-renderer-output');
-        var loading = $('#metacpan-pod-renderer-loading');
-        var error = $('#metacpan-pod-renderer-error');
-        rendered.hide();
-        rendered.html('');
-        loading.show();
-        error.hide();
-        document.title = "Pod Renderer - metacpan.org";
-        $.ajax({
-            url: '/pod2html',
-            method: 'POST',
-            data: {
-                pod: pod,
-                raw: true
-            },
-            success: function(data, stat, req) {
-                rendered.html(data);
-                loading.hide();
-                error.hide();
-                var res = $('#NAME + p').text().match(/^([^-]+?)\s*-\s*(.*)/);
-                if (res) {
-                    var title = res[0];
-                    var abstract = res[1];
-                    document.title = "Pod Renderer - " + title + " - metacpan.org";
-                }
-                var index = $("#index", rendered);
-                if (index.length) {
-                    format_index(index);
-                }
-                create_anchors(rendered);
-                rendered.show();
-                submit.removeAttr("disabled");
-            },
-            error: function(data, stat) {
-                rendered.hide();
-                loading.hide();
-                error.html('Error rendering POD' +
-                    (data && data.length ? ' - ' + data : ''));
-                error.show();
-                submit.removeAttr("disabled");
-            }
-        });
-    };
-    if (window.FileReader) {
-        $('input[type="file"]', pod2html_form).on('change', function(e) {
-            var files = this.files;
-            for (var i = 0; i < files.length; i++) {
-                var file = files[i];
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    pod2html_text.get(0).value = e.target.result;
-                    pod2html_update(e.target.result);
-                };
-                reader.readAsText(file);
-            }
-            this.value = null;
-        });
-    }
-    pod2html_form.on('submit', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        pod2html_update();
-    });
-
-    var renderer = $(".metacpan-pod-renderer")
-
-    var dragTimer;
-    renderer.on("dragover", function(event) {
-        event.preventDefault();
-        if (dragTimer) {
-            window.clearTimeout(dragTimer);
-        }
-        dragTimer = window.setTimeout(function() {
-            renderer.removeClass("dragging");
-            window.clearTimeout(dragTimer);
-            dragTimer = null;
-        }, 500);
-    });
-
-    $(document).on("dragenter", function(event) {
-        renderer.addClass("dragging");
-    });
-
-    renderer.on("drop", function(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        renderer.removeClass("dragging");
-        if (dragTimer) {
-            window.clearTimeout(dragTimer);
-            dragTimer = null;
-        }
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            pod2html_text.get(0).value = e.target.result;
-            pod2html_update(e.target.result);
-        };
-        reader.readAsText(event.originalEvent.dataTransfer.files[0]);
-    });
-});
+}
 
 function set_page_size(selector, storage_name) {
-    $(selector).each(function() {
-        var url = this.href;
-        var result = /[&;?]size=(\d+)(?:$|[&;])/.exec(url);
-        var size;
+    for (const el of document.querySelectorAll(selector)) {
+        const result = el.href.match(/[&;?]size=(\d+)(?:$|[&;])/);
         if (result && result[1]) {
-            size = result[1];
-            $(this).click(function() {
-                MetaCPAN.storage.setItem(storage_name, size);
-                return true;
+            const size = result[1];
+            el.addEventListener('click', () => {
+                storage.setItem(storage_name, size);
             });
-        } else if (size = MetaCPAN.storage.getItem(storage_name)) {
-            if (/\?/.exec(url)) {
-                this.href += '&size=' + size;
-            } else {
-                this.href += '?size=' + size;
+            return;
+        }
+        const storage_size = storage.getItem(storage_name);
+        if (storage_size) {
+            if (el.href.match(/\?/)) {
+                el.href += '&size=' + storage_size;
+            }
+            else {
+                el.href += '?size=' + storage_size;
             }
         }
-        return true;
-    });
+    }
 }
 
 // poor man's RFC-6570 formatter
@@ -481,99 +95,197 @@ function format_string(input_string, replacements) {
     const output_string = input_string.replace(
         /\{(\/?)(\w+)\}/g,
         (x, slash, placeholder) =>
-        replacements.hasOwnProperty(placeholder) ?
+        Object.hasOwn(replacements, placeholder) ?
         slash + replacements[placeholder] : ''
     );
     return output_string;
 }
 
-function showUserData(user_data) {
-    // User is logged in, so show it
-    $('.logged_in').css('display', 'grid');
-    $('.logged_placeholder').css('display', 'none');
-    if (user_data.avatar) {
-        const avatar = document.createElement('img');
-        avatar.classList.add('logged-in-avatar');
+// User customisations
+processUserData();
 
-        // could use srcset
-        avatar.src = format_string(user_data.avatar, {
-            size: Math.floor(35 * window.devicePixelRatio)
-        });
-        avatar.crossorigin = 'anonymous';
-        document.querySelector('.logged_in .logged-in-icon').replaceWith(avatar);
+jQuery(".ttip").tooltip(); // bootstrap
+
+for (const el of document.querySelectorAll('.keyboard-shortcuts')) {
+    el.addEventListener('click', e => {
+        e.preventDefault();
+        jQuery('#metacpan_keyboard-shortcuts').modal(); // bootstrap
+    });
+}
+
+// Global keyboard shortcuts
+Mousetrap.bind('?', function() {
+    jQuery('#metacpan_keyboard-shortcuts').modal(); // bootstrap
+});
+Mousetrap.bind('s', function(e) {
+    e.preventDefault();
+    document.querySelector('#metacpan_search-input').focus();
+});
+
+// install a default handler for 'g s' for non pod pages
+Mousetrap.bind('g s', () => {});
+
+for (const el of document.querySelectorAll('a[data-keyboard-shortcut]')) {
+    Mousetrap.bind(el.dataset.keyboardShortcut, () => {
+        window.location = el.href;
+    });
+}
+
+for (const logout of document.querySelectorAll('.logout-button')) {
+    logout.addEventListener('click', e => {
+        e.preventDefault();
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/account/logout';
+        document.body.appendChild(form);
+        form.submit();
+    });
+}
+
+relatizeDate(document.querySelectorAll('.relatize'));
+
+for (const el of document.querySelectorAll('.ellipsis')) {
+    const text = el.textContent;
+
+    // try to find a reasonable place to cut to allow mid-abbreviation.
+    // we want to cut "near" the middle, but prefer on a boundary.
+    const initial_cut = Math.floor(text.length / 5 * 3);
+    let start_text = text.substr(0, initial_cut);
+    let end_text = text.substr(initial_cut);
+    const res = start_text.match(/^(.*[- :])(.*?)$/);
+    if (res && res[1].length > text.length / 4) {
+        start_text = res[1];
+        end_text = res[2] + end_text;
     }
 
-    // process users current favs
-    $.each(user_data.faves, function(index, value) {
-        var distribution = value.distribution;
+    const start = document.createElement('span');
+    start.append(start_text);
+    const end = document.createElement('span');
+    end.append(end_text);
 
-        // On the page... make it deltable and styled as 'active'
-        var fav_display = $('#' + distribution + '-fav');
+    el.replaceChildren();
 
-        if (fav_display.length) {
-            fav_display.find('input[name="remove"]').val(1);
-            var button = fav_display.find('button');
-            button.addClass('active');
-            setFavTitle(button);
-        }
-
-    });
-
+    el.append(end);
+    start.style.maxWidth = 'calc(100% - ' + end.clientWidth + 'px)';
+    el.prepend(start);
 }
 
-function processUserData() {
-    fetch('/account/login_status')
-        .then(res => res.json())
-        .then(data => {
-            if (data.logged_in) {
-                showUserData(data);
-            } else {
-                $('.logged_out').css('display', 'inline');
-            }
-            $('.logged_placeholder').css('display', 'none');
-        })
-        .catch(() => {
-            $('.logged_out').css('display', 'inline');
+createAnchors(document.querySelectorAll('.anchors'));
+
+for (const favButton of document.querySelectorAll('.breadcrumbs .favorite')) {
+    setFavTitle(favButton);
+}
+
+jQuery('.dropdown-toggle').dropdown(); // bootstrap
+
+const toc = document.querySelector(".content .toc")
+if (toc) {
+    formatTOC(toc);
+}
+
+for (const link of document.querySelectorAll('a[href*="/search?"]')) {
+    link.addEventListener('click', () => {
+        const result = link.href.match(/size=(\d+)/);
+        if (result && result[1]) {
+            storage.setItem('search_size', result[1]);
+        }
+    });
+}
+
+const size = storage.getItem('search_size');
+if (size) {
+    document.querySelector('#metacpan_search-size').value = size;
+}
+
+// TODO use a more specific locator for /author/PAUSID/release ?
+set_page_size('a[href*="/releases"]', 'releases_page_size');
+set_page_size('a[href*="/recent"]', 'recent_page_size');
+set_page_size('a[href*="/requires"]', 'requires_page_size');
+
+const changes = document.querySelector('#metacpan_last-changes');
+if (changes) {
+    const changes_content = changes.querySelector('.changes-content');
+    const changes_toggle = changes.querySelector(".changes-toggle");
+    changes.classList.add('collapsable', 'collapsed');
+
+    const content_height = Math.round(changes_content.scrollHeight);
+
+    const potential_size = Math.round(
+        changes_content.offsetHeight +
+        changes_toggle.offsetHeight
+    );
+
+    if (content_height <= potential_size) {
+        changes.classList.remove('collapsable', 'collapsed');
+    }
+    changes_toggle.addEventListener('click', e => {
+        e.preventDefault();
+        changes.classList.toggle('collapsed');
+    });
+}
+
+for (const favForm of document.querySelectorAll('form[action="/account/favorite/add"]')) {
+    favForm.addEventListener('submit', async e => {
+        e.preventDefault();
+        const formData = new FormData(favForm);
+        const response = await fetch(favForm.action, {
+            method: favForm.method,
+            headers: {
+                'Accept': 'application/json',
+            },
+            body: formData,
         });
-    return true;
-}
+        if (!response.ok) {
+            alert("Error adding favorite!");
+        }
 
-function favDistribution(form) {
-    form = $(form);
-    var data = form.serialize();
-    $.ajax({
-        type: 'POST',
-        url: form.attr('action'),
-        data: data,
-        success: function() {
-            var button = form.find('button');
-            button.toggleClass('active');
-            setFavTitle(button);
-            var counter = button.find('span');
-            var count = counter.text();
-            if (button.hasClass('active')) {
-                counter.text(count ? parseInt(count, 10) + 1 : 1);
-                // now added let users remove
-                form.find('input[name="remove"]').val(1);
-                if (!count)
-                    button.toggleClass('highlight');
-            } else {
-                // can't delete what's already deleted
-                form.find('input[name="remove"]').val(0);
+        const button = favForm.querySelector('button');
+        button.classList.toggle('active');
+        setFavTitle(button);
+        const counter = button.querySelector('span');
+        const count = counter.innerText;
+        if (button.classList.contains('active')) {
+            counter.innerText = count ? parseInt(count, 10) + 1 : 1;
+            // now added let users remove
+            favForm.querySelector('input[name="remove"]').value = 1;
+            if (!count)
+                button.classList.toggle('highlight');
+        }
+        else {
+            // can't delete what's already deleted
+            favForm.querySelector('input[name="remove"]').value = 0;
 
-                counter.text(parseInt(count, 10) - 1);
+            counter.textContent = parseInt(count, 10) - 1;
 
-                if (counter.text() == 0) {
-                    counter.text("");
-                    button.toggleClass('highlight');
-                }
-            }
-        },
-        error: function() {
-            if (confirm("You have to complete a Captcha in order to ++.")) {
-                document.location.href = "/account/turing";
+            if (counter.textContent == 0) {
+                counter.textContent = '';
+                button.classList.toggle('highlight');
             }
         }
     });
-    return false;
+}
+
+for (const favButton of document.querySelectorAll('.fav-not-logged-in')) {
+    favButton.addEventListener('click', e => {
+        e.preventDefault();
+        alert('Please sign in to add favorites');
+    });
+}
+
+for (const sel of document.querySelectorAll('.select-navigator')) {
+    sel.addEventListener('change', () => {
+        document.location.href = sel.value;
+        sel.selectedIndex = 0;
+    });
+}
+
+const contribs = document.querySelector('#metacpan_contributors');
+if (contribs) {
+    const contrib_button = document.querySelector('.contributors-show-button');
+    contrib_button.addEventListener('click', e => {
+        e.preventDefault();
+        contrib_button.style.display = 'none';
+        contribs.classList.remove('slide-out-hidden');
+        contribs.classList.add('slide-down');
+    });
 }

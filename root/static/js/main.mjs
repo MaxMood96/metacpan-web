@@ -1,0 +1,16 @@
+import './google-analytics.mjs';
+import './autocomplete.mjs';
+import './tablesorter.mjs';
+import './cpan.js';
+import './github.js';
+import './dropdown.js';
+import './profile.js';
+import './search.js';
+import 'bootstrap/js/dropdown.js';
+import 'bootstrap/js/collapse.js';
+import 'bootstrap/js/modal.js';
+import 'bootstrap/js/tooltip.js';
+import 'bootstrap/js/affix.js';
+import './bootstrap-slidepanel.js';
+import './syntaxhighlighter.mjs';
+import './pod2html.mjs';

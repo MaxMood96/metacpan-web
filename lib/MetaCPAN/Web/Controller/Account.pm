@@ -4,8 +4,8 @@ use Moose;
 
 BEGIN { extends 'MetaCPAN::Web::Controller' }
 
+use Cpanel::JSON::XS          ();
 use MetaCPAN::Web::RenderUtil ();
-use JSON::MaybeXS             ();
 
 sub auto : Private {
     my ( $self, $c ) = @_;
@@ -36,7 +36,7 @@ sub login_status : Local : Args(0) : Auth(0) {
     my $output = $c->{stash}{json} ||= {};
 
     if ( my $user = $c->user ) {
-        $output->{logged_in} = JSON::MaybeXS::true;
+        $output->{logged_in} = Cpanel::JSON::XS::true;
         if ( my $pause_id = $user->pause_id ) {
 
             # this is not a complete author record, but enough for now
@@ -62,7 +62,7 @@ sub login_status : Local : Args(0) : Auth(0) {
         $c->forward('/account/favorite/list_as_json');
     }
     else {
-        $c->stash->{json}{logged_in} = JSON::MaybeXS::false;
+        $c->stash->{json}{logged_in} = Cpanel::JSON::XS::false;
         $c->cdn_max_age('30d');
     }
 }
@@ -159,7 +159,6 @@ sub profile : Local : Args(0) {
         $c->stash( { author => $data, errors => $res->{errors} } );
     }
     else {
-        $c->purge_author_key( $data->{pauseid} ) if exists $data->{pauseid};
         $c->stash( { success => 1, author => $res } );
     }
 }

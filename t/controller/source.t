@@ -1,7 +1,9 @@
 use strict;
 use warnings;
-use Test::More;
+use lib 't/lib';
+
 use MetaCPAN::Web::Test qw( app GET test_cache_headers test_psgi tx );
+use Test::More;
 
 test_psgi app, sub {
     my $cb = shift;

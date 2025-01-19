@@ -66,6 +66,8 @@ sub get {
 
 sub get_multiple {
     my ( $self, @authors ) = @_;
+    return Future->done( { took => 0, total => 0, authors => [] } )
+        if !@authors;
     return $self->request( '/author/by_ids', { id => [ map uc, @authors ] } )
         ->transform(
         done => sub {
@@ -149,7 +151,7 @@ my $profile_data = {
     },
     hackerrank => {
         name       => 'HackerRank',
-        url_format => 'https://www.hackerrank.com/%s',
+        url_format => 'https://www.hackerrank.com/profile/%s',
     },
     hackthissite => {
         name       => 'HackThisSite',
@@ -198,10 +200,6 @@ my $profile_data = {
     pinboard => {
         name       => 'Pinboard',
         url_format => 'https://pinboard.in/u:%s',
-    },
-    prepan => {
-        name       => 'PrePAN',
-        url_format => 'http://prepan.org/user/%s',
     },
     reddit => {
         name       => 'Reddit',

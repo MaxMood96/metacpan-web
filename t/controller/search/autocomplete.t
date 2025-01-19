@@ -1,9 +1,11 @@
 use strict;
 use warnings;
-use Encode qw( encode is_utf8 );
-use Test::More;
-use MetaCPAN::Web::Test qw( app GET test_psgi );
+use lib 't/lib';
+
 use Cpanel::JSON::XS    qw( decode_json );
+use Encode              qw( encode is_utf8 );
+use MetaCPAN::Web::Test qw( app GET test_psgi );
+use Test::More;
 
 my @tests = (
     [ moose           => 'Moose',                  1 ],

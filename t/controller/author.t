@@ -1,7 +1,9 @@
 use strict;
 use warnings;
-use Test::More;
+use lib 't/lib';
+
 use MetaCPAN::Web::Test qw( app GET test_psgi tx );
+use Test::More;
 
 test_psgi app, sub {
     my $cb = shift;
@@ -29,7 +31,7 @@ test_psgi app, sub {
         'found a favorite'
     );
 
-    ok( $res = $cb->( GET $release), "GET $release" );
+    ok( $res = $cb->( GET $release ), "GET $release" );
     is( $res->code, 200, 'code 200' );
 
     ok( $res = $cb->( GET '/author/DOESNTEXIST/releases' ),

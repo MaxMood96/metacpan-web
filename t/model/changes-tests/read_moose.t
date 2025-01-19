@@ -1,7 +1,9 @@
 use strict;
 use warnings;
-use Test::More;
+use lib 't/lib';
+
 use aliased 'MetaCPAN::Web::Model::API::Changes::Parser';
+use Test::More;
 
 my $changes = Parser->load('t/model/changes-tests/moose.changes');
 

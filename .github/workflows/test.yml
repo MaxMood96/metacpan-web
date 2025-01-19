@@ -1,17 +1,67 @@
 ---
 name: test
-on: [pull_request]
+on:
+  push:
+    branches:
+      - 'master'
+  pull_request:
+    branches:
+      - '*'
+  workflow_dispatch:
 
 jobs:
+  code-formatting:
+    runs-on: ubuntu-22.04
+    name: Code Formatting
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch base ref
+        if: ${{ github.event.pull_request }}
+        run: git fetch origin ${{ github.base_ref }}:upstream
+      - run: npm install
+      - name: Install Carton
+        uses: perl-actions/install-with-cpm@v1
+        with:
+          install: Carton
+      - name: Install CPAN deps
+        uses: perl-actions/install-with-cpm@v1
+        with:
+          cpanfile: 'cpanfile'
+          args: >
+            --resolver=snapshot
+            --without-runtime
+            --without-test
+            --without-build
+            --with-develop
+      - name: Install precious
+        run: ./bin/install-precious /usr/local/bin
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - name: Select files
+        id: select-files
+        run: |
+          if [[ -n "${{ github.event.pull_request.number }}" ]]; then
+            echo 'precious-args=--git-diff-from upstream' >> "$GITHUB_OUTPUT"
+          else
+            echo 'precious-args=--all' >> "$GITHUB_OUTPUT"
+          fi
+      - name: Lint files
+        run: precious lint ${{ steps.select-files.outputs.precious-args }}
   docker:
     runs-on: ubuntu-22.04
     name: Docker
     steps:
-      - uses: actions/checkout@v3
-      - name: docker build
-        run: docker build . -t metacpan/metacpan-web:latest
-      - name: run Perl tests
-        run: docker run -i metacpan/metacpan-web carton exec prove -lr --jobs 2 t
+      - name: Build test image
+        id: docker-build-test
+        uses: docker/build-push-action@v6
+        with:
+          target: test
+          push: false
+          load: true
+      - name: Run Perl tests
+        run: docker run -i ${{ steps.docker-build-test.outputs.imageid }}
   test:
     runs-on: ubuntu-20.04
     name: Dockerless
@@ -19,42 +69,60 @@ jobs:
       fail-fast: false
       matrix:
         perl-version:
-          - "5.30"
+          - '5.36'
         resolver:
-          - metacpan
           - snapshot
+          - metacpan
     container:
       image: perl:${{ matrix.perl-version }}
       env:
-        DEVEL_COVER_OPTIONS: "-ignore,^local/"
+        DEVEL_COVER_OPTIONS: '+ignore,^local/,^t/'
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Enable coverage
+        id: coverage
+        if: >
+          matrix.resolver == 'snapshot'
+          && github.event.pull_request.user.login != 'dependabot[bot]'
+        run: echo "enabled=1" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "18"
-      - run: npm install -g yarn && yarn install
+          node-version: '22'
+      - run: npm install
+      - run: apt-get update && apt-get -y install libcmark-dev
       - name: Install Carton
-        uses: perl-actions/install-with-cpm@stable
+        uses: perl-actions/install-with-cpm@v1
         with:
           install: Carton
           sudo: false
       - name: Install CPAN deps
-        uses: perl-actions/install-with-cpm@stable
+        uses: perl-actions/install-with-cpm@v1
         with:
-          cpanfile: "cpanfile"
+          cpanfile: 'cpanfile'
           sudo: false
           args: >
             --resolver ${{ matrix.resolver }}
-            --show-build-log-on-failure
-            --local-lib-contained=local
-      - name: Maybe update cpanfile.snapshot
-        run: carton
-      - name: Run Tests
-        run: carton exec prove -lr --jobs 2 t
-        env:
-          TEST_TIDYALL_VERBOSE: 1
-      - uses: actions/upload-artifact@v3
+      - name: Build assets
+        run: npm run build
+      - name: Install Codecovbash
+        if: steps.coverage.outputs.enabled
+        uses: perl-actions/install-with-cpm@v1
         with:
-          name: "${{ matrix.perl-version }}.${{ matrix.resolver }}"
-          path: cpanfile.snapshot
-        if: success() && matrix.resolver == 'metacpan'
+          install: |
+            Devel::Cover
+            Devel::Cover::Report::Codecovbash
+          sudo: false
+      - name: Enable coverage
+        if: steps.coverage.outputs.enabled
+        run: echo "HARNESS_PERL_SWITCHES=-MDevel::Cover" >> "$GITHUB_ENV"
+      - name: Run tests
+        run: carton exec prove -lr --jobs 2 t
+      - name: Generate Codecov report
+        if: steps.coverage.outputs.enabled
+        run: cover -report codecovbash
+      - uses: codecov/codecov-action@v5
+        if: steps.coverage.outputs.enabled
+        with:
+          fail_ci_if_error: true
+          file: ./cover_db/codecov.json
+          token: ${{ secrets.CODECOV_TOKEN }}

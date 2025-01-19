@@ -2,6 +2,8 @@ package MetaCPAN::Web::Controller::About;
 
 use Moose;
 
+use Cpanel::JSON::XS qw( encode_json );
+
 BEGIN { extends 'MetaCPAN::Web::Controller' }
 
 sub auto : Private {
@@ -17,8 +19,15 @@ sub about : Path : Args(0) {
     my ( $self, $c ) = @_;
 }
 
-sub contributors : Local : Args(0) {
+sub contributors : Local : Args(0) : Query() {
     my ( $self, $c ) = @_;
+    my $contributors
+        = $c->model('GitHub')
+        ->contributors->else( sub { Future->fail( encode_json( $_[0] ) ) } )
+        ->get;
+    $c->stash( {
+        contributors => $contributors,
+    } );
 }
 
 sub contact : Local : Args(0) {

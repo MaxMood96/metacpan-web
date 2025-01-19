@@ -1,13 +1,15 @@
 package MetaCPAN::Web::Controller::Release;
 
 use Moose;
-use namespace::autoclean;
 use experimental 'postderef';
 use Future ();
+use namespace::autoclean -except => [qw(NonEmptyStr)];
+use MetaCPAN::Web::Types qw(NonEmptyStr);    ## no perlimports
 
 BEGIN { extends 'MetaCPAN::Web::Controller' }
 
-sub root : Chained('/') PathPart('release') CaptureArgs(2) {
+sub root : Chained('/') PathPart('release')
+    CaptureArgs(NonEmptyStr,NonEmptyStr) {
     my ( $self, $c, $author, $release ) = @_;
 
     # force consistent casing in URLs
@@ -197,14 +199,14 @@ sub _link_issue_changelogs {
         && $release->{resources}{bugtracker}{web};
     my $repo = $release->{resources}{repository};
     $repo = ref $repo ? $repo->{url} : $repo;
-    if ( $bt && $bt =~ m|^https?://github\.com/| ) {
-        $gh_base = $bt;
-        $gh_base =~ s{/*$}{/};
+    if ( $bt && $bt =~ m|^https?://github\.com/([^/]+/[^/]+)| ) {
+        my $slug = $1;
+        $gh_base = "https://github.com/$slug/issues/";
     }
     elsif ( $repo && $repo =~ m|\bgithub\.com/([^/]+/[^/]+)| ) {
-        my $name = $1;
-        $name =~ s/\.git$//;
-        $gh_base = "https://github.com/$name/issues/";
+        my $slug = $1;
+        $slug =~ s/\.git$//;
+        $gh_base = "https://github.com/$slug/issues/";
     }
     if ( $bt && $bt =~ m|\brt\.perl\.org\b| ) {
         $rt_base = $rt_perl_base;

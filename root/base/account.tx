@@ -3,11 +3,6 @@
 %%  }
 %%  override left_nav_classes -> { 'nav nav-pills nav-stacked' }
 %%  override left_nav_content -> {
-%%  if !$user.looks_human {
-<li class="[% if $current['account/turing'] { 'active' } %]">
-    <a href="/account/turing">Verify Account</a>
-</li>
-%%  }
 <li class="[% if $current['account/identities'] { 'active' } %]">
     <a href="/account/identities">Identities</a>
 </li>
@@ -18,6 +13,6 @@
     <a href="/account/favorite/list">Favorites</a>
 </li>
 <li>
-    <a href="#" onclick="$('#metacpan-logout').submit(); return false">Logout</a>
+    <a href="#" class="logout-button">Logout</a>
 </li>
 %%  }

@@ -1,8 +1,9 @@
 use strict;
 use warnings;
+use lib 't/lib';
 
-use Test::More;
 use Digest::SHA ();
+use Test::More;
 
 # This test validates that all of the static files in the images, icons, and
 # fonts directories have the expected content. These files are served with an
@@ -10,6 +11,66 @@ use Digest::SHA ();
 # way. If the content of one of these files needs to change, it should
 # normally use a new file name. If it's a minor change where it is acceptable
 # for users to use the old files, then updating the hash can be done instead.
+
+## regenerate with: perl t/static-files.t --regen
+
+for my $arg (@ARGV) {
+    if ( $arg eq '--regen' ) {
+        my @roots = qw(
+            root/static/icons
+            root/static/images
+        );
+
+        my @files;
+
+        require File::Find;
+        File::Find::find(
+            {
+                no_chdir => 1,
+                wanted   => sub {
+                    return
+                        if -d;
+                    return
+                        if m{\/\.} || m{~$};
+
+                    push @files, $_;
+                },
+            },
+            @roots,
+        );
+
+        my %sha = map {
+            $_ => Digest::SHA->new('sha1')->addfile( $_, 'b' )->hexdigest
+        } @files;
+
+        my $script = $0;
+        $script = "./$script"
+            unless $script =~ m{^/};
+
+        open my $fh, '+<', $script
+            or die;
+
+        while ( my $line = <$fh> ) {
+            chomp $line;
+            if ( $line eq '__DATA__' ) {
+                truncate $fh, tell $fh;
+                for my $file ( sort keys %sha ) {
+                    print $fh "$sha{$file}  $file\n";
+                }
+                close $fh;
+
+                @ARGV = ();
+                do $script or die;
+                exit;
+            }
+        }
+
+        die "Can't find __DATA__ marker in $0!\n";
+    }
+    else {
+        die "Unsupported option $arg!\n";
+    }
+}
 
 my %files = reverse map /(\S+)/g, <DATA>;
 
@@ -23,8 +84,6 @@ for my $file ( sort keys %files ) {
 
 done_testing;
 
-## generated with: shasum $(find root/static/icons root/static/images -type f | sort)
-
 __DATA__
 679be699079a90f586aa90dbc79aac14731a226c  root/static/icons/apple-touch-icon.png
 9352147a2cb97acb161f21202e9bfec29b6faa30  root/static/icons/favicon-16.ico
@@ -34,6 +93,7 @@ __DATA__
 aa842d887b715e457517c3a6d5006189275e12fd  root/static/icons/page_white.png
 9d0aaf1b7b03783229d08e972fd5ca7e5113e2de  root/static/icons/page_white_c.png
 5cd510d1d1ae6126d23ecdba62fac129520a3af4  root/static/icons/page_white_code.png
+206b6499e0042c778be417a65eb74d3682cb8fdb  root/static/images/dots.png
 c6eb68299d78fecc8b74b05ee11942c034992da5  root/static/images/dots.svg
 b0cdcd8a2baf229cea555bb5a72e94a234057641  root/static/images/flag/ad.png
 9be5373eb09ae6dda325cf774dca5917c0141b4f  root/static/images/flag/ae.png
@@ -328,7 +388,6 @@ cf600d1ce2ba84d54bc210ed4859b90a07d22f6a  root/static/images/profile/newsvine.pn
 a8caffce132bcfdaa0d87d6311ca7ba40be30e9d  root/static/images/profile/pinboard.png
 bbc03be0b7e878b0ac5b552ca1c2c4a568dcd744  root/static/images/profile/playperl.png
 723b1d505ba65d0d11c3e7e5f33158ae1349cc5b  root/static/images/profile/posterous.png
-0e5490b976ed2a7bbdcc9a71dfe880ef7deca898  root/static/images/profile/prepan.png
 f53a57193f209a34f70bb791750cb60df3a4cb30  root/static/images/profile/reddit.png
 9375111d1ec664e1c38203b419e4518f770076d6  root/static/images/profile/slideshare.png
 3911607f7c8558628bf3da1dac17c629f073a490  root/static/images/profile/sourceforge.png
@@ -350,31 +409,30 @@ f9f0e31b575d54daff57a3ff7a5df362cfc37f92  root/static/images/profile/youtube.png
 161cb712a2298eeb3940afc710caf7f9f9194bef  root/static/images/sponsors/activestate.png
 16b8e4557ee882a3dd157170e08d1ededa18812a  root/static/images/sponsors/advance-systems.jpg
 ee9ccebabfe78643470da003d83e6b61608979f6  root/static/images/sponsors/booking.png
-52a7ea5efe9ae9aaf6a20da37a1c6052e882411a  root/static/images/sponsors/bytemark_logo.svg
+8a01c9ce500f517cceded7e5b929b718af2f10e9  root/static/images/sponsors/bytemark_logo.svg
 12036785cf973c7340818e0837db942830dbf01e  root/static/images/sponsors/control-my-id.png
 8d0a1c548cae06f8d384c7619ee55baabcc27386  root/static/images/sponsors/cpanel.png
 0f8418f040c5504fa69386bafcf7046f11c37503  root/static/images/sponsors/dealspotr.png
-e08d05b3ac61f49694c04540eb4f7ee70a8e6894  root/static/images/sponsors/deriv-horizontal-web-dark-100-removebg.png
-ca16d4cefecab05b457f5ed88415d28f3cce3832  root/static/images/sponsors/deriv-horizontal-web-dark-100.jpeg
-940396b51a065d9580f887d24fd7f5ebf1bd236a  root/static/images/sponsors/deriv.webp
+6f5474eb784a5e9c7498c7a5d773b6ae7b9b5c2d  root/static/images/sponsors/deriv.svg
 8c9059f6ef31a420bfb9f6efb4ce01278e5a5740  root/static/images/sponsors/dyn.png
 a588394fcb496ee492d289d4db0e1d3624a34528  root/static/images/sponsors/easyname.png
-292b9ab76da7035cf192f8c651a090c4bd4bc2ab  root/static/images/sponsors/elastic.svg
+ad5fc6a8acfc28c3f2836e5265ed6607d2105f6a  root/static/images/sponsors/elastic.svg
 5d76d29f7e9ce2d323cef2c451cd26300e10c770  root/static/images/sponsors/epo.png
-a9f2f7876e47d1d0d374551135b56a5b86b89886  root/static/images/sponsors/fastly_logo.svg
+affc39387e003c45463936607df8f48ff4727c2c  root/static/images/sponsors/fastly_logo.svg
 bf821b7f7ef4d00c61046141e8e28b9366eb3dbb  root/static/images/sponsors/fastmail.svg
 4b8d0d2d653d76dc59b446bd706b034a007f581a  root/static/images/sponsors/geocodelogo.svg
 ff77edb3ea13567310837717da9d2cdea155682c  root/static/images/sponsors/github_logo.png
 ddc82658ac274d981a7e3159fc4ed452166f73a4  root/static/images/sponsors/idonethis.png
 887d712f253b63e53319ad37cfcf3fdbd36e8a36  root/static/images/sponsors/kritika.svg
 45ae7ac5577e16b082966d44053844948ae627bc  root/static/images/sponsors/liquidweb_logo.png
-2b7374c1c82ad51415dacd32d033b119fcfa9cba  root/static/images/sponsors/open-cage.svg
+ddaa87b7948c4d46a51f763c80570c1767f1c0b4  root/static/images/sponsors/open-cage.svg
 7f77555505dfcb1a2c3b47bec95062fe2dd7a5da  root/static/images/sponsors/panopta.png
 fb43b99a721b83aeebf528977f3df7083a69289e  root/static/images/sponsors/perl-careers.png
-1eacc5aedbbaeb388801652ecc48c76fce49d530  root/static/images/sponsors/perl-services.svg
+e7a33768fa5460562e48a3676fe048d3e261f8dd  root/static/images/sponsors/perl-services.svg
 5cdd9d7bda9936c0ab678063a93df341fd37acb1  root/static/images/sponsors/perl_logo.png
 e691cd3eb125c4b9e157a083a1c0a5f14e5a692a  root/static/images/sponsors/qah-2014.png
 bb659e08ba1966a9e6d90f9969ce89dd8c6a61b7  root/static/images/sponsors/servercentral.png
+b22714f31bf7817c297cf6670fa27c0fe53e9897  root/static/images/sponsors/sonic.png
 f251ab8c5c58c9c87bbd2e6042d9b2574cd0bc8b  root/static/images/sponsors/speedchilli.png
 28b210ec069326d1914b54186854e278b874e08e  root/static/images/sponsors/travis-ci.png
 d1756602e3883c084a901338b96d8a03b8b540b9  root/static/images/sponsors/vienna.pm.jpeg

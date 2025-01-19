@@ -1,5 +1,6 @@
 use strict;
 use warnings;
+use lib 't/lib';
 
 use MetaCPAN::Web                   ();
 use MetaCPAN::Web::Controller::Feed ();
@@ -18,7 +19,7 @@ use Try::Tiny      qw( catch try );
 sub get_feed_ok {
     my ( $cb, $test, $extra ) = @_;
     subtest $test => sub {
-        ok( my $res = $cb->( GET $test), $test );
+        ok( my $res = $cb->( GET $test ), $test );
         is( $res->code, 200, 'code 200' );
         is(
             $res->header('content-type'),

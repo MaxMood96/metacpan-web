@@ -62,7 +62,17 @@ sub update_profile {
 
 sub get_profile {
     my ( $self, $token ) = @_;
-    $self->request( '/user/profile', undef, { access_token => $token } );
+    $self->request( '/user/profile', undef, { access_token => $token } )
+        ->then( sub {
+        my $data = shift;
+        for my $field (qw(email website)) {
+            my $value = $data->{$field}
+                or next;
+            $data->{$field} = [$value]
+                if !ref $value;
+        }
+        return $data;
+        } );
 }
 
 sub add_favorite {
@@ -74,15 +84,6 @@ sub remove_favorite {
     my ( $self, $token, $data ) = @_;
     $self->request( '/user/favorite/' . $data->{distribution},
         undef, { access_token => $token }, 'DELETE' );
-}
-
-sub turing {
-    my ( $self, $token, $answer ) = @_;
-    $self->request(
-        '/user/turing',
-        { answer       => $answer },
-        { access_token => $token },
-    );
 }
 
 __PACKAGE__->meta->make_immutable;

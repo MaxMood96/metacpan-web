@@ -1,12 +1,14 @@
 use strict;
 use warnings;
+use lib 't/lib';
+
+use Cpanel::JSON::XS    qw( decode_json );
+use HTTP::Cookies       ();
+use HTTP::Date          qw( time2str );
 use MetaCPAN::Web::Test qw( app GET override_api_response POST test_psgi tx );
+use Plack::Session      ();
+use Test::Deep          qw( cmp_deeply );
 use Test::More;
-use Test::Deep       qw( cmp_deeply );
-use Cpanel::JSON::XS qw( decode_json );
-use HTTP::Date       qw( time2str );
-use HTTP::Cookies    ();
-use Plack::Session   ();
 
 my $api_res;
 my $api_req;
@@ -83,10 +85,7 @@ test_psgi app, sub {
     };
 
     # (we're always authenticated from now on)
-    $user_res = {
-        looks_human => \1,
-        id          => '5',
-    };
+    $user_res = { id => '5', };
 
     subtest 'GET profile' => sub {
         $api_res = { error => 'broken' };
